@@ -1,6 +1,11 @@
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 3.16)
 
-add_executable()
+project(Additional-tasks)
 
 find_package(OpenMP)
-target_link_libraries(${PROJECT_NAME} PUBLIC OpenMP::OpenMP_CXX)
+link_libraries(OpenMP::OpenMP_CXX)
+include_directories(../include)
+
+add_executable(Nested Nested.cpp)
+add_executable(CopyIn CopyIn.cpp)
+add_executable(CopyPrivate CopyPrivate.cpp)

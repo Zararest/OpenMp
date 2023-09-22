@@ -1,4 +1,8 @@
+#include "omp.h"
 #include <cmath>
+#include <iostream>
+
+#pragma once
 
 namespace utils {
 
@@ -19,6 +23,11 @@ double floatDiv(T1 Lhs, T2 Rhs) {
 bool cmpFloats(double Lhs, double Rhs) {
   constexpr auto e = 0.00000001L;
   return (Lhs - Rhs) > -e && (Lhs - Rhs) < e;
+}
+
+void printThreadPos(std::ostream &S) {
+  S << "{" << omp_get_level() << ", " << omp_get_thread_num() 
+    << ", " << omp_get_ancestor_thread_num(omp_get_level()) << "}";
 }
 
 } // namespace utils
