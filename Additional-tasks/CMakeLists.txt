@@ -13,3 +13,5 @@ add_executable(CopyIn CopyIn.cpp)
 add_executable(CopyPrivate CopyPrivate.cpp)
 add_executable(Schedule Schedule.cpp)
 add_executable(Sort Merge-sort.cpp)
+
+add_subdirectory(OpenCL-merge-sort)
