@@ -1,6 +1,6 @@
 #ifndef NEW_DATA
   #define T int
-  #define LOC_SIZE 256
+  #define LOCAL_SIZE 256
   #define CMP <
 #endif
 
@@ -41,11 +41,11 @@ void mergeIteration(__global T *From, __global T *To, size_t Size, size_t ChunkS
 
   size_t TailSize = Size - ChunkSize;
   size_t RhsSize =  TailSize > ChunkSize ? ChunkSize : TailSize;
-  merge(From, From + ChunkSize, ChunkSize, RhsSize, To);
+  mergeGlobalMem(From, From + ChunkSize, ChunkSize, RhsSize, To);
 }
 
 // Size may be not a power of 2
-__kernel void mergeChunks(__global T *Arr, __global T *To, size_t Size, size_t ChunkSize) {
+__kernel void mergeChunks(__global T *Arr, __global T *To, unsigned Size, unsigned ChunkSize) {
   size_t Id = get_global_id(0);
   size_t SizePerIter = get_global_size(0) * ChunkSize * 2; 
   size_t ThreadPos = ChunkSize * 2 * Id;

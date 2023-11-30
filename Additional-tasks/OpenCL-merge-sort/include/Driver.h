@@ -18,10 +18,10 @@
 #include <cassert>
 
 struct Config {
-  size_t Size = 256;
-  size_t ThreadsNum = 16;
+  size_t Size = 1048576;
+  size_t ThreadsNum = 128;
   size_t MaxLocalMemSize = 32;
-  size_t ChunkSize = 32;
+  size_t ChunkSize = 131072;
   std::string DataType = "int";
 
   using T = int;
@@ -52,6 +52,7 @@ class Driver {
         return cl::Platform(P);
     }
     reportFatalError("Can't find GPU platform");
+    return *Platforms.begin();
   }
 
   cl::Context getGPUContext(cl_platform_id Platform) {
@@ -71,16 +72,39 @@ class Driver {
     auto Program = cl::Program(Ctx, Kernel, /*build*/ true);
     
     auto KernelStart = 
-      cl::KernelFunctor<cl::Buffer, cl::Buffer, size_t, size_t>(Program, "mergeChunks");
+      cl::KernelFunctor<cl::Buffer, cl::Buffer, 
+                        unsigned, unsigned>(Program, "mergeChunks");
 
     auto ProgramArgs = 
       cl::EnqueueArgs{Queue, cl::NDRange{Cfg.ThreadsNum}, cl::NDRange{Cfg.ThreadsNum}};
 
-    auto KernelRes = KernelStart(ProgramArgs, CLIn, CLOut, Size, Cfg.ChunkSize);
+    cl::Event KernelRes = KernelStart(ProgramArgs, CLIn, CLOut, Size, ChunkSize);
     KernelRes.wait();
 
     cl::copy(Queue, CLOut, Beg, End);
   } 
+
+  template <typename It>
+  void makeMerge(size_t ChunkSize, It Beg, It End) {
+    assert(std::distance(Beg, End));
+    auto Size = static_cast<size_t>(std::distance(Beg, End));
+    auto Buf = std::vector<int>{};
+    auto Pos = 0ul;
+
+    for (; Pos + ChunkSize < Size; Pos += ChunkSize * 2) {
+      auto RhsPos = Pos + ChunkSize;
+      auto LhsIt = Beg + Pos;
+      auto RhsIt = Beg + std::min(Pos + ChunkSize, Size);
+      auto RhsSize = std::min(ChunkSize, Size - Pos - ChunkSize);
+      std::merge(LhsIt, LhsIt + ChunkSize, 
+                 RhsIt, RhsIt + RhsSize, 
+                 std::back_inserter(Buf));
+    }
+    if (Pos < Size)
+      std::copy(Beg + Pos, End, std::back_inserter(Buf));
+    assert(Buf.size() == Size);
+    std::copy(Buf.begin(), Buf.end(), Beg);
+  }
 
   template <typename It>
   void sortOnCPU(size_t ChunkSize, It Beg, It End) {
@@ -88,7 +112,8 @@ class Driver {
     auto CurChunkSize = ChunkSize;
 
     while (CurChunkSize < Size) {
-        //FUXME!!!!!!!
+      makeMerge(CurChunkSize, Beg, End);
+      CurChunkSize *= 2;
     }
   }
 
@@ -107,7 +132,8 @@ public:
     auto KernelStream = std::stringstream{};
     KernelStream << "#define NEW_DATA\n";
     KernelStream << "#define LOCAL_SIZE " << std::to_string(Cfg.MaxLocalMemSize) << "\n";
-    KernelStream << "#define DATA_T " << Cfg.DataType << "\n";
+    KernelStream << "#define T " << Cfg.DataType << "\n";
+    KernelStream << "#define CMP <\n"; 
 
     KernelStream << KernelFile.rdbuf();
     
