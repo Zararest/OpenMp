@@ -19,10 +19,10 @@ CalcRes linear(Matrix<Data_t> a) {
   std::chrono::steady_clock::time_point Begin = std::chrono::steady_clock::now();
   for (long i = 3; i < a.w(); i++)
     for (long j = 0; j < a.h() - 2; j++)
-      a[i][j] = sin(3 * a[i - 3][j + 2]);
+      a[i][j] = f(a[i - 3][j + 2]);
   std::chrono::steady_clock::time_point End = std::chrono::steady_clock::now();
   return {std::move(a),  
-    std::chrono::duration_cast<std::chrono::nanoseconds>(End - Begin).count()};
+    std::chrono::duration_cast<std::chrono::milliseconds>(End - Begin).count()};
 }
 
 
@@ -71,16 +71,17 @@ Data_t calcElem(Matrix<Data_t> &a, Pos CurPos) {
 
 void calcRound(Matrix<Data_t> &a, Pos CurPos, 
               std::vector<std::pair<Pos, Data_t>> &Res) {
-  for (int dy = 0; dy < YShift; ++dy) {
+  for (int y = 0; y < YShift; ++y) {
+    if (!a.isValid(CurPos))
+      return;
     a[CurPos] = calcElem(a, CurPos);
     Res.emplace_back(CurPos, a[CurPos]);
-    CurPos.Y += dy;
+    CurPos.Y++;
   }
 }
 
 void calcDiag(Matrix<Data_t> &a, Pos CurPos, 
               std::vector<std::pair<Pos, Data_t>> &Res) {
-  // underflow сделает обращение невалидным
   while (a.isValid(CurPos)) {
     calcRound(a, CurPos, Res);
     CurPos = getNextPos(CurPos);
@@ -88,22 +89,18 @@ void calcDiag(Matrix<Data_t> &a, Pos CurPos,
 }
 
 Pos getNextDiagPos(Pos DiagPos, long NumOfThreads, long Width) {  
-  // в этом случае мы идем влево 
-  if (DiagPos.Y == 0 && DiagPos.X >= NumOfThreads)
-    return {DiagPos.X - NumOfThreads, 0};
+  // первый шаг с заполнением главной диагонали
+  if (DiagPos.Y == 0 && DiagPos.X - NumOfThreads >= 0)
+    return {DiagPos.X - NumOfThreads, DiagPos.Y};
+  if (DiagPos.Y == 0)
+    DiagPos.Y += YShift;
 
-  std::cout << "Переходный : " << static_cast<int>(NumOfThreads - DiagPos.X) << " Y = " << DiagPos.Y << std::endl;
-  // Переходный случай
-  if (DiagPos.Y == 0 && DiagPos.X < NumOfThreads)
-    return {Width - (std::abs(static_cast<int>(NumOfThreads - DiagPos.X)) % std::abs(XShift)), 
-            YShift * (std::abs(static_cast<int>(NumOfThreads - DiagPos.X)) / std::abs(XShift) + 1)};
-  std::cout << "here: y = " << DiagPos.Y << std::endl; 
-  // теперь идем вниз
-  assert(Width - DiagPos.X < std::abs(XShift));
-  auto PosFromRight = Width - DiagPos.X;
-  auto NewXPosFromRight = (NumOfThreads + PosFromRight) % std::abs(XShift);
-  auto NewYLevelShift = (NumOfThreads + PosFromRight) / std::abs(XShift);
-  return Pos{Width - NewXPosFromRight, DiagPos.Y + YShift * NewYLevelShift};
+  auto NextPosInSecondStep = DiagPos.X - NumOfThreads < 0 ? DiagPos.X - NumOfThreads + Width
+                                                          : DiagPos.X - NumOfThreads;
+  auto PosFromRight = Width - NextPosInSecondStep - 1;
+  auto LevelShift = PosFromRight / std::abs(XShift);
+  auto NewXPos = Width - 1 - (PosFromRight % std::abs(XShift)) ;
+  return {NewXPos, DiagPos.Y + YShift * LevelShift};
 }
 
 void collectData(Matrix<Data_t> &a, 
@@ -111,8 +108,9 @@ void collectData(Matrix<Data_t> &a,
                  MPIManager &M) {
   std::cout << "Size: " << Res.size()  << std::endl;
   assert(Res.size() == a.w() * a.h());
-  for (auto [Pos, Val] : Res)
+  for (auto [Pos, Val] : Res) {
     a[Pos] = Val;
+  }
 }
 
 CalcRes parallel(Matrix<Data_t> a, MPIManager &M) {
@@ -121,7 +119,6 @@ CalcRes parallel(Matrix<Data_t> a, MPIManager &M) {
 
   std::chrono::steady_clock::time_point Begin = std::chrono::steady_clock::now();
   while (a.isValid(InitPos)) {
-    std::cout << "Cur pos: " << InitPos.X << " " << InitPos.Y << std::endl;
     calcDiag(a, InitPos, Res);
     InitPos = getNextDiagPos(InitPos, M.getMPIGroupSize(), a.w());
   }
@@ -129,7 +126,7 @@ CalcRes parallel(Matrix<Data_t> a, MPIManager &M) {
   collectData(a, Res, M);
   std::chrono::steady_clock::time_point End = std::chrono::steady_clock::now();
   return {std::move(a),  
-    std::chrono::duration_cast<std::chrono::nanoseconds>(End - Begin).count()};
+    std::chrono::duration_cast<std::chrono::milliseconds>(End - Begin).count()};
 }
 
 int main(int Argc, char **Argv) {
