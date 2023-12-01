@@ -55,4 +55,13 @@ public:
   bool isValid(Pos AccessPos) {
     return AccessPos.X < ColNum && AccessPos.Y < RowNum;
   }
+
+  bool operator== (const Matrix &Rhs) {
+    return Rhs.Buf.size() != Buf.size() && 
+           std::equal(Buf.begin(), Buf.end(), Rhs.Buf.begin());
+  }
+
+  bool operator!= (const Matrix &Rhs) {
+    return !this->operator==(Rhs);
+  }
 };
