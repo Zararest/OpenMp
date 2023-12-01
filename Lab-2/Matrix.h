@@ -8,28 +8,28 @@
 template <typename T>
 class Matrix {
   std::vector<T> Buf;
-  size_t ColNum;
-  size_t RowNum;
+  long ColNum;
+  long RowNum;
 
   struct Proxy {
-    size_t Offset;
+    long Offset;
     std::vector<T> &Buf;
 
-    Proxy(std::vector<T> &Buf, size_t Offset) : Offset{Offset}, 
+    Proxy(std::vector<T> &Buf, long Offset) : Offset{Offset}, 
                                                 Buf{Buf} {}
 
-    T &operator[] (size_t J) {
+    T &operator[] (long J) {
       return Buf[Offset + J];
     }
   };
 
 public:
   struct Pos {
-    size_t X;
-    size_t Y;
+    long X;
+    long Y;
   };
 
-  Matrix(size_t RowNum, size_t ColNum) : ColNum{ColNum}, RowNum{RowNum} {
+  Matrix(long RowNum, long ColNum) : ColNum{ColNum}, RowNum{RowNum} {
     auto Size = ColNum * RowNum;
     assert(Size);
     std::mt19937 Rng; 
@@ -40,15 +40,15 @@ public:
     return Buf[Position.Y * ColNum + Position.X];
   }
  
-  Proxy operator[] (size_t I) {
+  Proxy operator[] (long I) {
     return Proxy{Buf, I * ColNum};
   }
 
-  size_t w() const {
+  long w() const {
     return ColNum;
   }
 
-  size_t h() const {
+  long h() const {
     return RowNum;
   }
 

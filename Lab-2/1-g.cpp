@@ -17,8 +17,8 @@ T f(T x) {
 
 CalcRes linear(Matrix<Data_t> a) {
   std::chrono::steady_clock::time_point Begin = std::chrono::steady_clock::now();
-  for (size_t i = 3; i < a.w(); i++)
-    for (size_t j = 0; j < a.h() - 2; j++)
+  for (long i = 3; i < a.w(); i++)
+    for (long j = 0; j < a.h() - 2; j++)
       a[i][j] = sin(3 * a[i - 3][j + 2]);
   std::chrono::steady_clock::time_point End = std::chrono::steady_clock::now();
   return {std::move(a),  
@@ -87,28 +87,23 @@ void calcDiag(Matrix<Data_t> &a, Pos CurPos,
   }
 }
 
-Pos getNextDiagPos(Pos DiagPos, size_t IterNum, size_t NumOfThreads, size_t Width) {
-  // значит не надо подниматься по Y
-  if (DiagPos.X >= NumOfThreads)
-    return {DiagPos.X - NumOfThreads, DiagPos.Y};
-  // уровень - еще не посчитанные элементы
-  // после каждого подсчета дисагонали уровни смещаются вверх, 
-  // но текущий все равно считается от 1 тк все ниже заполнены
-  // ширина уровня - XShift * CurLevel
-  auto CurLevel = 1ul; // то насколько надо будет подняться по Y
-  auto CurLevelSize = (CurLevel + 1) * std::abs(XShift);
-  std::cout << " Num of threads: " << NumOfThreads << std::endl;
-  while (DiagPos.X + CurLevelSize < NumOfThreads) {
-    CurLevel++;
-    CurLevelSize = (CurLevel + 1) * std::abs(XShift);
-    std::cout << "Cur level size: " << CurLevelSize << std::endl; //надо протестить
-  }
+Pos getNextDiagPos(Pos DiagPos, long NumOfThreads, long Width) {  
+  // в этом случае мы идем влево 
+  if (DiagPos.Y == 0 && DiagPos.X >= NumOfThreads)
+    return {DiagPos.X - NumOfThreads, 0};
 
-  DiagPos.Y += CurLevel;
-  std::cout << "Cur level: " << CurLevel << " cur level size: " << CurLevelSize;
-  std::cout << " pos: " << (DiagPos.X + CurLevelSize + 1 - NumOfThreads) << std::endl;
-  DiagPos.X = Width - (DiagPos.X + CurLevelSize + 1 - NumOfThreads);
-  return DiagPos;
+  std::cout << "Переходный : " << static_cast<int>(NumOfThreads - DiagPos.X) << " Y = " << DiagPos.Y << std::endl;
+  // Переходный случай
+  if (DiagPos.Y == 0 && DiagPos.X < NumOfThreads)
+    return {Width - (std::abs(static_cast<int>(NumOfThreads - DiagPos.X)) % std::abs(XShift)), 
+            YShift * (std::abs(static_cast<int>(NumOfThreads - DiagPos.X)) / std::abs(XShift) + 1)};
+  std::cout << "here: y = " << DiagPos.Y << std::endl; 
+  // теперь идем вниз
+  assert(Width - DiagPos.X < std::abs(XShift));
+  auto PosFromRight = Width - DiagPos.X;
+  auto NewXPosFromRight = (NumOfThreads + PosFromRight) % std::abs(XShift);
+  auto NewYLevelShift = (NumOfThreads + PosFromRight) / std::abs(XShift);
+  return Pos{Width - NewXPosFromRight, DiagPos.Y + YShift * NewYLevelShift};
 }
 
 void collectData(Matrix<Data_t> &a, 
@@ -122,16 +117,13 @@ void collectData(Matrix<Data_t> &a,
 
 CalcRes parallel(Matrix<Data_t> a, MPIManager &M) {
   auto InitPos = Pos{a.w() - M.getPID() - 1, 0};
-  auto CurLevel = 0ul;
   auto Res = std::vector<std::pair<Pos, Data_t>>{};
-  auto IterNum = 0ul;
 
   std::chrono::steady_clock::time_point Begin = std::chrono::steady_clock::now();
   while (a.isValid(InitPos)) {
     std::cout << "Cur pos: " << InitPos.X << " " << InitPos.Y << std::endl;
     calcDiag(a, InitPos, Res);
-    InitPos = getNextDiagPos(InitPos, IterNum, M.getMPIGroupSize(), a.w());
-    IterNum++;
+    InitPos = getNextDiagPos(InitPos, M.getMPIGroupSize(), a.w());
   }
 
   collectData(a, Res, M);
