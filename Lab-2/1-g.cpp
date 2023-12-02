@@ -2,6 +2,7 @@
 #include "Matrix.h"
 
 #include <chrono>
+#include <thread>
 
 using Data_t = double;
 
@@ -12,6 +13,7 @@ struct CalcRes {
 
 template <typename T>
 T f(T x) {
+  std::this_thread::sleep_for(std::chrono::milliseconds(1));
   return sin(3 * x);
 }
 
@@ -24,7 +26,6 @@ CalcRes linear(Matrix<Data_t> a) {
   return {std::move(a),  
     std::chrono::duration_cast<std::chrono::milliseconds>(End - Begin).count()};
 }
-
 
 /*
 
@@ -106,11 +107,22 @@ Pos getNextDiagPos(Pos DiagPos, long NumOfThreads, long Width) {
 void collectData(Matrix<Data_t> &a, 
                  std::vector<std::pair<Pos, Data_t>> &Res, 
                  MPIManager &M) {
-  std::cout << "Size: " << Res.size()  << std::endl;
-  assert(Res.size() == a.w() * a.h());
-  for (auto [Pos, Val] : Res) {
-    a[Pos] = Val;
+  if (M.getPID() != 0) {
+    M.sendContainer(Res, 0);
+    return;
   }
+  auto Size = Res.size();
+
+  for (auto [Pos, Val] : Res)
+    a[Pos] = Val;
+
+  for (PID SrcPID = 1; SrcPID < M.getMPIGroupSize(); ++SrcPID) {
+    auto RecvedRes = M.recvContainer<std::vector<std::pair<Pos, Data_t>>>(SrcPID);
+    for (auto [Pos, Val] : RecvedRes)
+      a[Pos] = Val;
+    Size += RecvedRes.size();
+  }
+  assert(Size == a.w() * a.h());
 }
 
 CalcRes parallel(Matrix<Data_t> a, MPIManager &M) {
@@ -143,5 +155,5 @@ int main(int Argc, char **Argv) {
   std::cout << "Parallel time: " << ParRres.Time << std::endl;
 
   if (LinearRes.Res != ParRres.Res)
-    std::cout << "Incorrect parallel result\n" << std::endl;
+    std::cout << "Incorrect parallel result\n" << std::endl; 
 }

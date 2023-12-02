@@ -19,6 +19,7 @@ class Matrix {
                                                 Buf{Buf} {}
 
     T &operator[] (long J) {
+      assert(J >= 0 && Offset >= 0 && Offset + J < Buf.size());
       return Buf[Offset + J];
     }
   };
@@ -37,6 +38,8 @@ public:
   }
 
   T &operator[] (Pos Position) {
+    assert(Position.X >= 0 && Position.Y >= 0 && 
+           Position.Y < RowNum && Position.X < ColNum);
     return Buf[Position.Y * ColNum + Position.X];
   }
  
@@ -61,8 +64,8 @@ public:
     return Rhs.Buf.size() == Buf.size() && 
            std::equal(Buf.begin(), Buf.end(), Rhs.Buf.begin(),
                       [](auto Lhs, auto Rhs) {
-                        auto e = Lhs * 0.01;
-                        return Rhs > Lhs - e && Rhs < Lhs + e;
+                        auto e = std::abs(Lhs) * 0.01;
+                        return std::abs(Lhs - Rhs) < e;
                       });
   }
 
