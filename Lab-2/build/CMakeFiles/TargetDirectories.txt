@@ -1,3 +1,0 @@
-/home/ii-sc/Education/OpenMp/Lab-2/build/CMakeFiles/1-G.dir
-/home/ii-sc/Education/OpenMp/Lab-2/build/CMakeFiles/edit_cache.dir
-/home/ii-sc/Education/OpenMp/Lab-2/build/CMakeFiles/rebuild_cache.dir
