@@ -19,8 +19,8 @@ T f(T x) {
 
 CalcRes linear(Matrix<Data_t> a) {
   std::chrono::steady_clock::time_point Begin = std::chrono::steady_clock::now();
-  for (long i = 3; i < a.w(); i++)
-    for (long j = 0; j < a.h() - 2; j++)
+  for (long i = 3; i < a.h(); i++)
+    for (long j = 0; j < a.w() - 2; j++)
       a[i][j] = f(a[i - 3][j + 2]);
   std::chrono::steady_clock::time_point End = std::chrono::steady_clock::now();
   return {std::move(a),  
@@ -146,14 +146,22 @@ int main(int Argc, char **Argv) {
   auto a = Matrix<Data_t>(std::stoul(Argv[1]), std::stoul(Argv[2]));
   auto M = MPIManager{};
 
-  auto ParRres = parallel(a, M);
+  auto ParRes = parallel(a, M);
   if (M.getPID() != 0)
     return 0;
   auto LinearRes = linear(a);
 
   std::cout << "Linear time: " << LinearRes.Time << std::endl;
-  std::cout << "Parallel time: " << ParRres.Time << std::endl;
+  std::cout << "Parallel time: " << ParRes.Time << std::endl;
 
-  if (LinearRes.Res != ParRres.Res)
+  if (LinearRes.Res != ParRes.Res)
     std::cout << "Incorrect parallel result\n" << std::endl; 
+  
+  /*
+  std::cout << "Par:\n";
+  ParRes.Res.dump();
+
+  std::cout << "Linear:\n";
+  LinearRes.Res.dump();
+  */
 }

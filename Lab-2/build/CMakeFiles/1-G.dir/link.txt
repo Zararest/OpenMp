@@ -1,0 +1,1 @@
+/usr/bin/c++ "CMakeFiles/1-G.dir/1-g.cpp.o" -o 1-G  -Wl,-rpath,/usr/lib/x86_64-linux-gnu/openmpi/lib /usr/lib/x86_64-linux-gnu/openmpi/lib/libmpi.so -lpthread -lmpi_cxx 
