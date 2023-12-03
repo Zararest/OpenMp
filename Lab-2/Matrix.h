@@ -4,6 +4,7 @@
 #include <random>
 #include <algorithm>
 #include <cassert>
+#include <iostream>
 
 template <typename T>
 class Matrix {
@@ -34,7 +35,9 @@ public:
     auto Size = ColNum * RowNum;
     assert(Size);
     std::mt19937 Rng; 
-    std::generate_n(std::back_inserter(Buf), Size, Rng);
+    Buf = std::vector<T>(Size);
+    std::iota(Buf.begin(), Buf.end(), 0);
+    //std::generate_n(std::back_inserter(Buf), Size, Rng);
   }
 
   T &operator[] (Pos Position) {
@@ -65,7 +68,7 @@ public:
            std::equal(Buf.begin(), Buf.end(), Rhs.Buf.begin(),
                       [](auto Lhs, auto Rhs) {
                         auto e = std::abs(Lhs) * 0.01;
-                        return std::abs(Lhs - Rhs) < e;
+                        return std::abs(Lhs - Rhs) <= e;
                       });
   }
 
