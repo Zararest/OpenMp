@@ -98,17 +98,14 @@ public:
   }
 
   template <typename T>
-  auto recvContainer(PID Src, int MsgTag = DEFAULT_TAG,
+  auto recvVector(PID Src, int MsgTag = DEFAULT_TAG,
                      MPI_Comm Group = getGroup(MPIGroup::World)) const {
-    auto DataSize = recv<decltype(T{}.size())>(Src, MsgTag, Group);
-    auto Size = DataSize / sizeof(typename T::value_type);
-    auto Buf = new typename T::value_type[Size + 1];
+    auto DataSize = recv<size_t>(Src, MsgTag, Group);
+    auto Size = DataSize / sizeof(T);
+    std::vector<T> RetBuf(Size);
     MPI_Status Status;
-    auto Ret = MPI_Recv(Buf, DataSize, MPI_BYTE, Src,
-                        MsgTag, Group, &Status);
-    std::vector<typename T::value_type> RetBuf;
-    std::copy(Buf, Buf + Size, back_inserter(RetBuf));
-    delete[] Buf;                     
+    auto Ret = MPI_Recv(RetBuf.data(), DataSize, MPI_BYTE, Src,
+                        MsgTag, Group, &Status); 
     return RetBuf;
   }
 

@@ -4,8 +4,6 @@
 #include <chrono>
 #include <thread>
 
-#define NUM_OF_THREADS 1
-
 using Data_t = double;
 
 struct CalcRes {
@@ -18,7 +16,7 @@ constexpr int XShift = -2;
 
 template <typename T>
 T f(T x) {
-  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  //std::this_thread::sleep_for(std::chrono::milliseconds(1));
   return sin(0.1 * x);
 }
 

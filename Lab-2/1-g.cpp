@@ -12,8 +12,8 @@ struct CalcRes {
 };
 
 template <typename T>
-T f(T x) {
-  std::this_thread::sleep_for(std::chrono::milliseconds(1));
+inline T f(T x) {
+  //std::this_thread::sleep_for(std::chrono::milliseconds(1));
   return sin(3 * x);
 }
 
@@ -117,7 +117,7 @@ void collectData(Matrix<Data_t> &a,
     a[Pos] = Val;
 
   for (PID SrcPID = 1; SrcPID < M.getMPIGroupSize(); ++SrcPID) {
-    auto RecvedRes = M.recvContainer<std::vector<std::pair<Pos, Data_t>>>(SrcPID);
+    auto RecvedRes = M.recvVector<std::pair<Pos, Data_t>>(SrcPID);
     for (auto [Pos, Val] : RecvedRes)
       a[Pos] = Val;
     Size += RecvedRes.size();
@@ -135,8 +135,13 @@ CalcRes parallel(Matrix<Data_t> a, MPIManager &M) {
     InitPos = getNextDiagPos(InitPos, M.getMPIGroupSize(), a.w());
   }
 
+  std::chrono::steady_clock::time_point CollabBegin = std::chrono::steady_clock::now();
   collectData(a, Res, M);
   std::chrono::steady_clock::time_point End = std::chrono::steady_clock::now();
+
+  std::cout << "Collaboration time: " << 
+    std::chrono::duration_cast<std::chrono::milliseconds>(End - CollabBegin).count() << 
+    std::endl;
   return {std::move(a),  
     std::chrono::duration_cast<std::chrono::milliseconds>(End - Begin).count()};
 }
